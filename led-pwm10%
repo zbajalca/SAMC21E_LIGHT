@@ -1,0 +1,65 @@
+Aby ustawić PWM na stałe na 10% wypełnienia, musisz obliczyć wartość wypełnienia dla 24-bitowej rozdzielczości PWM. 10% to 0.1 * 0xFFFFFF (maksymalna wartość dla 24-bit PWM), co daje:
+
+0.1 * 0xFFFFFF = 0x1A0000
+
+
+Oto jak możesz to zrobić w kodzie:
+
+c
+
+#include <stddef.h>                     // Defines NULL
+#include <stdbool.h>                    // Defines true
+#include <stdlib.h>                     // Defines EXIT_FAILURE
+#include "definitions.h"                // SYS function prototypes
+
+static bool volatile bToggleLED = false;
+
+void TC0_CH0_TimerInterruptHandler(TC_TIMER_STATUS status, uintptr_t context)
+{
+    bToggleLED = true;
+}
+
+int main ( void )
+{
+    SYS_Initialize(NULL);   
+    TCC0_PWMInitialize(); // Inicjalizacja modułu PWM TCC0
+    TCC0_PWMStart();      // Startujemy generowanie PWM
+
+    const uint32_t dutyCycle = 0x1A0000; // 10% duty cycle for 24-bit PWM
+
+    // Register callback function for CH0 period interrupt
+    TC0_TimerCallbackRegister(TC0_CH0_TimerInterruptHandler, (uintptr_t)NULL);
+
+    // Start the timer channel 0
+    TC0_TimerStart();
+
+    while ( true )
+    {
+        if ( bToggleLED )
+        {
+            bToggleLED = false;
+            LED_Toggle(); // LED should blink based on timer interrupt
+        }
+
+        // Set PWM duty cycle to 10%
+        if (!TCC0_PWM24bitDutySet(TCC0_CHANNEL3, dutyCycle))
+        {
+            // Handle the case when setting the duty cycle fails
+        }
+    }
+
+    return EXIT_FAILURE;
+}
+
+
+Wyjaśnienia:
+
+    dutyCycle jest ustawione na stałą wartość 0x1A0000, co odpowiada 10% wypełnienia przy 24-bitowej rozdzielczości PWM.
+    Używamy TCC0_PWM24bitDutySet() do ustawienia wypełnienia. Jeśli funkcja zwróci false, oznacza to, że nie udało się ustawić wypełnienia, co może być spowodowane tym, że bufor jest zajęty. W takim przypadku możesz chcieć dodać jakąś obsługę błędów, np. ponowić próbę w następnej iteracji pętli.
+
+
+Upewnij się, że Twoja konfiguracja PWM w MCC jest zgodna z tym kodem, zwłaszcza jeśli chodzi o kanał PWM, który jest przypisany do PA16. Jeśli po zastosowaniu tych zmian wypełnienie PWM nadal nie zmienia się na 10%, sprawdź:
+
+    Czy PWM jest poprawnie skonfigurowany do generowania sygnału na PA16.
+    Czy nie ma innych funkcji, które mogłyby konfliktować z PWM na tym pinie.
+    Czy mikrokontroler ma poprawnie skonfigurowane źródło zegara dla TCC0.

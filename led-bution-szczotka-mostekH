@@ -1,0 +1,124 @@
+/*******************************************************************************
+  Main Source File
+
+  Company:
+    Microchip Technology Inc. and offi@itel.mine.nu
+  File Name:
+    main.c
+
+  Summary:
+    This file contains the "main" function for a project.
+
+  Description:
+    This file contains the "main" function for a project.  The
+    "main" function calls the "SYS_Initialize" function to initialize the state
+    machines of all modules in the system
+ *******************************************************************************/
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Included Files
+// *****************************************************************************
+// *****************************************************************************
+#include <stddef.h>                     // Defines NULL
+#include <stdbool.h>                    // Defines true
+#include <stdlib.h>                     // Defines EXIT_FAILURE
+#include "definitions.h"                // SYS function prototypes
+
+// State of SZCZ (LED)
+static volatile bool szczState = false;
+static volatile bool toggleLED = false;
+
+// Function to control motor direction
+void setMotorDirection(bool forward)
+{
+    if (forward)
+    {
+        // Forward direction
+        MOTOR_POS_Set();  // Assuming MOTOR_POS_Set() sets PA27 high
+        MOTOR_NEG1_Clear(); // Assuming MOTOR_NEG1_Clear() sets PA24 low
+        MOTOR_NEG2_Set(); // Assuming MOTOR_NEG2_Set() sets PA08 high
+    }
+    else
+    {
+        // Reverse direction
+        MOTOR_POS_Clear();  // Assuming MOTOR_POS_Clear() sets PA27 low
+        MOTOR_NEG1_Set(); // Assuming MOTOR_NEG1_Set() sets PA24 high
+        MOTOR_NEG2_Clear(); // Assuming MOTOR_NEG2_Clear() sets PA08 low
+    }
+}
+
+// Timer callback function for blinking LED
+void TC0_CH0_TimerInterruptHandler(TC_TIMER_STATUS status, uintptr_t context)
+{
+    toggleLED = true;
+}
+
+// Simple delay function if SYSTICK_DelayMs doesn't work
+void simpleDelay(uint32_t ms)
+{
+    volatile uint32_t counter;
+    for (counter = 0; counter < (ms * 1000); counter++)  // Adjust for your MCU speed
+    {
+        // Empty loop
+    }
+}
+
+int main ( void )
+{
+    // Initialize all modules
+    SYS_Initialize(NULL);
+    
+    // Register callback function for TC0 CH0 period interrupt for LED blinking
+    TC0_TimerCallbackRegister(TC0_CH0_TimerInterruptHandler, (uintptr_t)NULL);
+
+    // Start the timer channel 0
+    TC0_TimerStart();
+
+    bool direction = true; // Start moving forward
+
+    while ( true )
+    {
+        // LED blinking
+        if (toggleLED)
+        {
+            LED_Toggle(); // Assuming LED_Toggle() toggles the LED pin
+            toggleLED = false; // Reset the flag
+        }
+
+        // Control SZCZ with buttons
+        // Check if Button1 (PA18) is pressed to turn SZCZ on
+        if (BUTTON1_Get() == 0)  // Assuming BUTTON1_Get() returns 0 when button is pressed
+        {
+            szczState = true;
+            while (BUTTON1_Get() == 0); // Wait for button release to prevent multiple triggers
+        }
+        
+        // Check if Button2 (PA28) is pressed to turn SZCZ off
+        if (BUTTON2_Get() == 0)  // Assuming BUTTON2_Get() returns 0 when button is pressed
+        {
+            szczState = false;
+            while (BUTTON2_Get() == 0); // Wait for button release to prevent multiple triggers
+        }
+
+        // Set SZCZ state
+        if (szczState)
+        {
+            SZCZ_Set(); // Assuming SZCZ_Set() turns on SZCZ
+        }
+        else
+        {
+            SZCZ_Clear(); // Assuming SZCZ_Clear() turns off SZCZ
+        }
+
+        // Motor control
+        setMotorDirection(direction);
+        
+        // Toggle direction every 2 seconds (using simple delay if SYSTICK_DelayMs doesn't work)
+        simpleDelay(2000);
+        direction = !direction; // Change direction
+    }
+
+    // Execution should not come here during normal operation
+    return EXIT_FAILURE;
+}

@@ -1,0 +1,86 @@
+Jeśli chcesz, aby PWM na pinie SZCZ (PA16, skonfigurowany jako TCC0_WO[6], ale w kodzie używamy TCC0_CHANNEL3, bo tylko te kanały są dostępne w Twoim pliku nagłówkowym) zmieniał się automatycznie, możesz ustawić to tak, aby wypełnienie zmieniało się w pętli głównej lub w odpowiedzi na jakieś zdarzenia (np. przerwanie timera). Oto jak można to zrobić, aby PWM zmieniał się samoczynnie:
+
+c
+
+#include <stddef.h>                     // Defines NULL
+#include <stdbool.h>                    // Defines true
+#include <stdlib.h>                     // Defines EXIT_FAILURE
+#include "definitions.h"                // SYS function prototypes
+
+static bool volatile bToggleLED = false;
+
+void TC0_CH0_TimerInterruptHandler(TC_TIMER_STATUS status, uintptr_t context)
+{
+    bToggleLED = true;
+}
+
+int main ( void )
+{
+    SYS_Initialize(NULL);   
+    TCC0_PWMInitialize(); // Inicjalizacja modułu PWM TCC0
+    TCC0_PWMStart();      // Startujemy generowanie PWM
+
+    uint32_t dutyCycle = 0;        // Start with 0% duty cycle
+    uint32_t dutyStep = 0x10000;   // Step size for changing duty cycle
+    bool increasing = true;        // Direction of duty cycle change
+
+    // Register callback function for CH0 period interrupt
+    TC0_TimerCallbackRegister(TC0_CH0_TimerInterruptHandler, (uintptr_t)NULL);
+
+    // Start the timer channel 0
+    TC0_TimerStart();
+
+    while ( true )
+    {
+        if ( bToggleLED )
+        {
+            bToggleLED = false;
+            LED_Toggle(); // LED should blink based on timer interrupt
+        }
+
+        // Change PWM duty cycle
+        if (increasing)
+        {
+            if (dutyCycle < (0xFFFFFF - dutyStep)) // Check if we haven't reached maximum
+            {
+                dutyCycle += dutyStep;
+            }
+            else
+            {
+                increasing = false; // Change direction when max is reached
+            }
+        }
+        else
+        {
+            if (dutyCycle > dutyStep) // Check if we haven't reached minimum
+            {
+                dutyCycle -= dutyStep;
+            }
+            else
+            {
+                increasing = true; // Change direction when min is reached
+            }
+        }
+
+        // Set new duty cycle for PWM on Channel 3
+        if (!TCC0_PWM24bitDutySet(TCC0_CHANNEL3, dutyCycle))
+        {
+            // If setting failed, you might want to handle this case
+        }
+
+        // You can add a delay here if you want PWM to change more slowly
+        // For example: SYSTICK_DelayMs(10); // 10ms delay, adjust as needed
+    }
+
+    return EXIT_FAILURE;
+}
+
+
+Wyjaśnienia:
+
+    dutyCycle zaczyna się od 0, co daje 0% wypełnienia PWM, i jest zwiększany lub zmniejszany o dutyStep w zależności od wartości increasing, co tworzy efekt falowania wypełnienia PWM.
+    increasing jest używane do zmiany kierunku zmiany wypełnienia, aby uzyskać efekt "w górę i w dół".
+    Użycie TCC0_CHANNEL3 jest konieczne, ponieważ tylko te kanały są zdefiniowane w Twoim pliku nagłówkowym, choć PA16 jest skonfigurowany jako TCC0_WO[6]. To może wymagać dodatkowego sprawdzenia konfiguracji sprzętowej w MCC.
+
+
+Jeśli chcesz, aby zmiany wypełnienia PWM były bardziej płynne, możesz dodać opóźnienie w pętli głównej, aby zmiany nie następowały zbyt szybko. Jeśli LED mruga, a PWM nie zmienia się, ponownie sprawdź konfigurację TCC0 w MCC, aby upewnić się, że wszystko jest poprawnie skonfigurowane

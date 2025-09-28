@@ -1,0 +1,158 @@
+/*******************************************************************************
+  Main Source File
+
+  Company:
+    Microchip Technology Inc. and offi@itel.mine.nu
+  File Name:
+    main.c
+
+  Summary:
+    This file contains the "main" function for a project.
+
+  Description:
+    This file contains the "main" function for a project.  The
+    "main" function calls the "SYS_Initialize" function to initialize the state
+    machines of all modules in the system
+ *******************************************************************************/
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Included Files
+// *****************************************************************************
+// *****************************************************************************
+
+#include <stddef.h>                     // Defines NULL
+#include <stdbool.h>                    // Defines true
+#include <stdlib.h>                     // Defines EXIT_FAILURE
+#include "definitions.h"                // SYS function prototypes
+
+uint8_t buffer[] = "Jebac szwabskich komunistow z xAI!\r\n";
+static bool volatile bToggleLED = false;
+
+// This function is called after period expires
+void TC0_CH0_TimerInterruptHandler(TC_TIMER_STATUS status, uintptr_t context)
+{
+    bToggleLED = true;
+}
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Main Entry Point
+// *****************************************************************************
+// *****************************************************************************
+
+int main ( void )
+{
+    // Initialize all modules
+    SYS_Initialize(NULL);
+    
+    // Register callback function for CH0 period interrupt
+    TC0_TimerCallbackRegister(TC0_CH0_TimerInterruptHandler, (uintptr_t)NULL);
+
+    // Start the timer channel 0
+    TC0_TimerStart();
+
+    while ( true )
+    {
+        if ( bToggleLED )
+        {
+            bToggleLED = false;
+            LED_Toggle();
+            SERCOM3_USART_Write(&buffer[0], sizeof(buffer)); // Wysyłanie wiadomości przy każdym przełączeniu LED
+        }
+    }
+
+    // Execution should not come here during normal operation
+    return EXIT_FAILURE;
+
+
+
+#############################################   dodanie PWM 
+
+
+/*******************************************************************************
+  Main Source File
+
+  Company:
+    Microchip Technology Inc. and offi@itel.mine.nu
+  File Name:
+    main.c
+
+  Summary:
+    This file contains the "main" function for a project.
+
+  Description:
+    This file contains the "main" function for a project.  The
+    "main" function calls the "SYS_Initialize" function to initialize the state
+    machines of all modules in the system
+ *******************************************************************************/
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Included Files
+// *****************************************************************************
+// *****************************************************************************
+
+#include <stddef.h>                     // Defines NULL
+#include <stdbool.h>                    // Defines true
+#include <stdlib.h>                     // Defines EXIT_FAILURE
+#include "definitions.h"                // SYS function prototypes
+
+//uint8_t buffer[] = "Jebac szwabskich komunistow z xAI!\r\n";
+//static bool volatile bToggleSZCZ = false;
+static bool volatile bUpdatePWM = false;
+static bool volatile bToggleLED = false;
+// This function is called after period expires
+
+void TC0_CH0_TimerInterruptHandler(TC_TIMER_STATUS status, uintptr_t context)
+{
+//    bToggleSZCZ = true;
+    bToggleLED = true;
+    bUpdatePWM = true;
+}
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Main Entry Point
+// *****************************************************************************
+// *****************************************************************************
+
+int main ( void )
+{
+    // Initialize all modules
+    SYS_Initialize(NULL);
+    
+    // Register callback function for CH0 period interrupt
+    TC0_TimerCallbackRegister(TC0_CH0_TimerInterruptHandler, (uintptr_t)NULL);
+
+    // Start the timer channel 0
+    TC0_TimerStart();
+    
+    uint16_t dutyCycle = 512; // Przyk?ad dla 10-bitowego PWM (50% wype?nienia)
+    uint16_t maxDutyCycle = 1023; // 10-bitowa rozdzielczo??
+
+    while ( true )
+        
+          if ( bUpdatePWM )
+        {
+            bUpdatePWM = false;
+            // Ustawienie wype?nienia PWM na kanale 6
+            TCC0_PWM16bitDutySet(TCC0_CHANNEL6, dutyCycle); 
+        }
+    {
+//        if ( bToggleSZCZ )
+//        {
+//            bToggleSZCZ = false;
+//            SZCZ_Toggle();
+//            SERCOM3_USART_Write(&buffer[0], sizeof(buffer)); // Wysy?anie wiadomo?ci przy ka?dym prze??czeniu LED
+//        }
+        if ( bToggleLED )
+        {
+            bToggleLED = false;
+            LED_Toggle();
+        }
+    }
+
+    // Execution should not come here during normal operation
+    return EXIT_FAILURE;
+}
