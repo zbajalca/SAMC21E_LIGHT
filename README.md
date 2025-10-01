@@ -7,5 +7,13 @@ It’s not a complete or production-ready project – just initial attempts to g
 Feel free to look around, use parts of it, or suggest improvements.  
 
 ---
+## Build
+
+- IDE: **MPLAB X**
+- Compiler: **XC32**
+- Target MCU: **ATSAMC21E18A**
+
+## Notes
+
 
 **Note:** This repo may contain unfinished or experimental code. Use at your own risk.  
