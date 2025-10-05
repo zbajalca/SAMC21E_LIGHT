@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <executable name="dist/default/production/ble_led.X.production.elf">
+    <memory name="program">
+      <units>bytes</units>
+      <length>262144</length>
+      <used>1248</used>
+      <free>260896</free>
+    </memory>
+    <memory name="data">
+      <units>bytes</units>
+      <length>32768</length>
+      <used>125</used>
+      <free>32643</free>
+    </memory>
+  </executable>
+</project>
